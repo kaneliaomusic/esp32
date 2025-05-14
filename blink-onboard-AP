@@ -1,0 +1,66 @@
+#include <Arduino.h>
+#include <WiFi.h>
+#include <WebServer.h>
+
+// Define the onboard LED pin (usually GPIO2 for ESP32)
+const int onboardLED = 2;
+
+// Replace with your desired AP credentials
+const char* ssid = "ESP32-Access-Point";
+const char* password = "12345678";
+
+// Create a web server object on port 80
+WebServer server(80);
+
+// Variable to store the blink interval
+int blinkInterval = 1000;
+
+void handleRoot() {
+  String html = "<html><body>";
+  html += "<h1>ESP32 LED Blink Control</h1>";
+  html += "<form action=\"/set\" method=\"GET\">";
+  html += "Blink Interval (ms): <input type=\"number\" name=\"interval\">";
+  html += "<input type=\"submit\" value=\"Set\">";
+  html += "</form>";
+  html += "</body></html>";
+  server.send(200, "text/html", html);
+}
+
+void handleSet() {
+  if (server.hasArg("interval")) {
+    blinkInterval = server.arg("interval").toInt();
+    server.send(200, "text/plain", "Blink interval set to " + String(blinkInterval) + " ms");
+  } else {
+    server.send(400, "text/plain", "Invalid request");
+  }
+}
+
+void setupWiFi() {
+  // Configure ESP32 as an Access Point
+  WiFi.softAP(ssid, password);
+  Serial.println("Access Point started");
+  Serial.println("IP address: " + WiFi.softAPIP().toString());
+}
+
+void setupWebServer() {
+  server.on("/", handleRoot);
+  server.on("/set", handleSet);
+  server.begin();
+}
+
+void setup() {
+  pinMode(onboardLED, OUTPUT);
+  Serial.begin(115200);
+  setupWiFi();
+  setupWebServer();
+}
+
+void loop() {
+  server.handleClient();
+
+  // Blink the LED with the specified interval
+  digitalWrite(onboardLED, HIGH);
+  delay(blinkInterval);
+  digitalWrite(onboardLED, LOW);
+  delay(blinkInterval);
+}
